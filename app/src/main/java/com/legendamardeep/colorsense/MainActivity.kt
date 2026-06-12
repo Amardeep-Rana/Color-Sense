@@ -1,5 +1,6 @@
 package com.legendamardeep.colorsense
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
@@ -9,6 +10,7 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -21,7 +23,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -68,15 +69,46 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         handleIntent(intent)
         enableEdgeToEdge()
+        
+        val sharedPref = getSharedPreferences("theme_prefs", Context.MODE_PRIVATE)
+        
         setContent {
-            var isDarkMode by remember { mutableStateOf(false) }
-            val systemInDarkTheme = isSystemInDarkTheme()
-            
-            LaunchedEffect(systemInDarkTheme) { isDarkMode = systemInDarkTheme }
+            var isDarkMode by remember { 
+                mutableStateOf(sharedPref.getBoolean("is_dark_mode", false)) 
+            }
+
+            LaunchedEffect(isDarkMode) {
+                enableEdgeToEdge(
+                    statusBarStyle = if (isDarkMode) {
+                        SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    } else {
+                        SystemBarStyle.light(
+                            android.graphics.Color.TRANSPARENT, 
+                            android.graphics.Color.TRANSPARENT
+                        )
+                    },
+                    navigationBarStyle = if (isDarkMode) {
+                        SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    } else {
+                        SystemBarStyle.light(
+                            android.graphics.Color.TRANSPARENT, 
+                            android.graphics.Color.TRANSPARENT
+                        )
+                    }
+                )
+            }
 
             ColorSenseTheme(darkTheme = isDarkMode) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    MainNavigation(isDarkMode, onToggleDarkMode = { isDarkMode = !isDarkMode }, initialUri = initialUri)
+                    MainNavigation(
+                        isDarkMode = isDarkMode, 
+                        onToggleDarkMode = { 
+                            val newMode = !isDarkMode
+                            isDarkMode = newMode
+                            sharedPref.edit().putBoolean("is_dark_mode", newMode).apply()
+                        }, 
+                        initialUri = initialUri
+                    )
                 }
             }
         }
@@ -166,7 +198,7 @@ fun HomeScreen(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, onPickImage: (
     }
 
     Scaffold(modifier = Modifier.fillMaxSize()) { pv ->
-        Box(modifier = Modifier.fillMaxSize().padding(pv).systemBarsPadding()) {
+        Box(modifier = Modifier.fillMaxSize().padding(pv)) {
             Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Spacer(modifier = Modifier.height(20.dp))
                 Text("Color Sense", fontSize = 24.sp, fontWeight = FontWeight.Bold)
@@ -294,6 +326,17 @@ fun HomeScreen(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, onPickImage: (
                 }
                 Spacer(modifier = Modifier.weight(1f))
             }
+
+            Text(
+                "Made By\n@LegendAmardeep",
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 8.dp),
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(0.6f),
+                textAlign = TextAlign.Center,
+                lineHeight = 20.sp
+            )
             
             Box(modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) {
                 Box(
@@ -405,7 +448,7 @@ fun MainScreen(bitmap: Bitmap?, onBack: () -> Unit) {
             Column(modifier = Modifier.navigationBarsPadding()) {
                 Card(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(32.dp), colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(2.dp)) {
                     Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(modifier = Modifier.fillMaxWidth().height(60.dp).clip(RoundedCornerShape(16.dp)).background(selectedColor).shadow(1.dp))
+                        Box(modifier = Modifier.fillMaxWidth().height(60.dp).background(selectedColor, RoundedCornerShape(16.dp)))
                         Spacer(modifier = Modifier.height(20.dp))
                         Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.background.copy(0.5f)).padding(4.dp)) {
                             listOf("HEX", "RGB", "HSL").forEach { tab ->
